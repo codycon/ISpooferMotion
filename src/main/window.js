@@ -1,0 +1,102 @@
+const path = require('node:path');
+const { app, BrowserWindow } = require('electron');
+
+let mainWindow = null;
+
+const WINDOW_OPTIONS = Object.freeze({
+  width: 1280,
+  height: 780,
+  minWidth: 1260,
+  minHeight: 740,
+  title: 'ISpooferMotion',
+  frame: false,
+  resizable: true,
+  show: false,
+});
+
+function resolveAssetPath(fileName) {
+  return path.join(__dirname, '..', 'assets', fileName);
+}
+
+function getIconPath() {
+  return process.platform === 'win32'
+    ? resolveAssetPath('app_icon.ico')
+    : resolveAssetPath('app_icon.png');
+}
+
+function getPreloadPath() {
+  return path.join(__dirname, '..', 'preload', 'preload.js');
+}
+
+function getRendererPath() {
+  return path.join(__dirname, '..', 'renderer', 'index.html');
+}
+
+/**
+ * Creates the main application window.
+ */
+function createWindow() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.focus();
+    return mainWindow;
+  }
+
+  mainWindow = new BrowserWindow({
+    ...WINDOW_OPTIONS,
+    icon: getIconPath(),
+    webPreferences: {
+      preload: getPreloadPath(),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+      webSecurity: true,
+      devTools: true,
+    },
+  });
+
+  mainWindow.once('ready-to-show', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+
+  mainWindow.loadFile(getRendererPath()).catch((error) => {
+    console.error('[WINDOW ERROR] Failed to load renderer:', error);
+  });
+
+  return mainWindow;
+}
+
+/**
+ * Gets the current main window instance.
+ */
+function getMainWindow() {
+  return mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
+}
+
+/**
+ * Sets up Electron lifecycle handlers.
+ */
+function setupAppLifecycle() {
+  const ready = app.whenReady().then(() => {
+    createWindow();
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
+  });
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+  });
+
+  return ready;
+}
+
+module.exports = {
+  createWindow,
+  getMainWindow,
+  setupAppLifecycle,
+};
