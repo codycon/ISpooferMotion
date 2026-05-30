@@ -55,7 +55,7 @@ pub async fn start_server(app_handle: AppHandle) {
     let cors = CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any);
 
     let app = Router::new()
-        .route("/health", get(|| async { "OK" }))
+        .route("/health", get(handle_health))
         .route("/poll", get(handle_poll))
         .route("/poll-sounds", get(handle_poll_sounds))
         .route("/assets-sounds", post(handle_assets_sounds))
@@ -93,6 +93,17 @@ pub async fn start_server(app_handle: AppHandle) {
             let _ = axum::serve(listener, app).await;
         }
     });
+}
+
+async fn handle_health(State(state): State<AppState>) -> Json<serde_json::Value> {
+    let guard = state.data.lock();
+    let mut is_connected = false;
+    if let Some(last_poll) = guard.last_plugin_poll_time {
+        if last_poll.elapsed() < Duration::from_secs(10) {
+            is_connected = true;
+        }
+    }
+    Json(serde_json::json!({ "status": "OK", "plugin_connected": is_connected }))
 }
 
 fn clear_stale(store: &mut AssetStore) {

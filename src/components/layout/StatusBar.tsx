@@ -50,7 +50,8 @@ export default function StatusBar() {
     const port = config.advanced.pluginPort || '3100';
     const check = () => {
       fetch(`http://localhost:${port}/health`, { signal: AbortSignal.timeout(800) })
-        .then(() => setStudioConnected(true))
+        .then((res) => res.json())
+        .then((data) => setStudioConnected(data.plugin_connected === true))
         .catch(() => setStudioConnected(false));
     };
     check();

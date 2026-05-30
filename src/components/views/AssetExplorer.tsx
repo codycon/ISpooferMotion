@@ -398,13 +398,34 @@ export default function AssetExplorer({ isOpen, setIsOpen }: AssetExplorerProps)
     updateConfig('advanced', 'forcePlaceIds', Array.from(selectedAssetIds).join(','));
   }, [selectedAssetIds, updateConfig]);
 
-  // Check if the Studio plugin server is reachable
+  // Check if the Studio plugin server is reachable and trigger auto-scan if connected
   useEffect(() => {
     const port = config.advanced.pluginPort || '3100';
+    let isCurrentlyConnected = false;
+
     const check = () => {
       fetch(`http://localhost:${port}/health`, { signal: AbortSignal.timeout(800) })
-        .then(() => setStudioConnected(true))
-        .catch(() => setStudioConnected(false));
+        .then((res) => res.json())
+        .then((data) => {
+          const connected = data.plugin_connected === true;
+          
+          if (connected && !isCurrentlyConnected && !studioScanPending) {
+            // Plugin just connected! Trigger auto-scan by hitting the request endpoints
+            Promise.all([
+              fetch(`http://localhost:${port}/request-sounds`, { method: 'POST' }),
+              fetch(`http://localhost:${port}/request-animations`, { method: 'POST' }),
+              fetch(`http://localhost:${port}/request-images`, { method: 'POST' }),
+              fetch(`http://localhost:${port}/request-meshes`, { method: 'POST' })
+            ]).catch(() => {});
+          }
+
+          isCurrentlyConnected = connected;
+          setStudioConnected(connected);
+        })
+        .catch(() => {
+          isCurrentlyConnected = false;
+          setStudioConnected(false);
+        });
     };
     check();
     const id = setInterval(check, 5000);
