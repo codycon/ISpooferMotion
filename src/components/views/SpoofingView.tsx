@@ -529,7 +529,7 @@ export default function SpoofingView() {
         );
       });
 
-      unlistenResult = await listen('spoofer-result', (event: any) => {
+      unlistenResult = await listen('spoofer-result', async (event: any) => {
         setIsSpoofing(false);
         if (event.payload.success) {
           logIsm('success', 'Spoofing completed successfully.', true);
