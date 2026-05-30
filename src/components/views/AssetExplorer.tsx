@@ -132,7 +132,7 @@ function RbxNode({
           )}
         </div>
         <div className="w-4 h-4 flex items-center justify-center shrink-0 mr-1">
-          {hasChildren ? (
+          {node.children.length > 0 ? (
             <ChevronRight
               size={12}
               className={`transition-transform text-text-muted ${expanded ? 'rotate-90' : ''}`}
@@ -380,6 +380,7 @@ export default function AssetExplorer({ isOpen, setIsOpen }: AssetExplorerProps)
   const [activeAssetFilters, setActiveAssetFilters] = useState<string[]>(
     ASSET_TYPE_OPTIONS.map((o) => o.value),
   );
+  const [studioScanPending, setStudioScanPending] = useState(false);
   const {
     config,
     updateConfig,
@@ -479,13 +480,21 @@ export default function AssetExplorer({ isOpen, setIsOpen }: AssetExplorerProps)
 
   // Persistent background auto-poll — picks up data whether the user pressed
   // "Sync from Studio" in the app OR "Scan Now" directly in Studio.
+  // Each category is processed independently as soon as it arrives (complete:true)
+  // so that parallel fetch timing differences don't cause the state to be missed.
   const autoPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingScanData = useRef<{
+    anims?: any; sounds?: any; images?: any; meshes?: any;
+  }>({});
+  const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (!studioConnected) {
       if (autoPollRef.current) {
         clearInterval(autoPollRef.current);
         autoPollRef.current = null;
       }
+      setStudioScanPending(false);
       return;
     }
 
@@ -501,15 +510,46 @@ export default function AssetExplorer({ isOpen, setIsOpen }: AssetExplorerProps)
           fetch(`${base}/last-meshes`).then((r) => r.json()),
         ]);
 
-        const allDone = anims.complete && sounds.complete && images.complete && meshes.complete;
-        const anyData =
-          anims.assets?.length > 0 ||
-          sounds.assets?.length > 0 ||
-          images.assets?.length > 0 ||
-          meshes.assets?.length > 0;
+        // Accumulate each category the moment it completes
+        if (anims.complete) pendingScanData.current.anims = anims;
+        if (sounds.complete) pendingScanData.current.sounds = sounds;
+        if (images.complete) pendingScanData.current.images = images;
+        if (meshes.complete) pendingScanData.current.meshes = meshes;
 
-        if (allDone && anyData) {
-          processStudioData(anims, sounds, images, meshes);
+        // A scan is in progress if any category is scanning
+        const scanning = anims.scanning || sounds.scanning || images.scanning || meshes.scanning;
+        if (scanning) {
+          setStudioScanPending(true);
+          // Reset watchdog
+          if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
+          scanTimeoutRef.current = setTimeout(() => {
+            setStudioScanPending(false);
+            pendingScanData.current = {};
+          }, 30000);
+          return;
+        }
+
+        // All 4 categories have arrived — process together
+        const pd = pendingScanData.current;
+        if (pd.anims && pd.sounds && pd.images && pd.meshes) {
+          processStudioData(pd.anims, pd.sounds, pd.images, pd.meshes);
+          pendingScanData.current = {};
+          setStudioScanPending(false);
+          if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
+        } else if (pd.anims || pd.sounds || pd.images || pd.meshes) {
+          // Partial data — check if we've been waiting a while; if so fire with what we have
+          const haveAtLeastOne = pd.anims || pd.sounds || pd.images || pd.meshes;
+          if (haveAtLeastOne && !anims.scanning && !sounds.scanning && !images.scanning && !meshes.scanning) {
+            processStudioData(
+              pd.anims ?? { assets: [] },
+              pd.sounds ?? { assets: [] },
+              pd.images ?? { assets: [] },
+              pd.meshes ?? { assets: [] },
+            );
+            pendingScanData.current = {};
+            setStudioScanPending(false);
+            if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
+          }
         }
       } catch {
         // Server temporarily unreachable — keep polling
@@ -520,6 +560,10 @@ export default function AssetExplorer({ isOpen, setIsOpen }: AssetExplorerProps)
       if (autoPollRef.current) {
         clearInterval(autoPollRef.current);
         autoPollRef.current = null;
+      }
+      if (scanTimeoutRef.current) {
+        clearTimeout(scanTimeoutRef.current);
+        scanTimeoutRef.current = null;
       }
     };
   }, [studioConnected, config.advanced.pluginPort, processStudioData]);
@@ -788,9 +832,16 @@ export default function AssetExplorer({ isOpen, setIsOpen }: AssetExplorerProps)
                 className="flex-1 flex flex-col"
               >
                 <div className="flex-1 flex items-center justify-center">
-                  <span className="text-text-muted/60 text-xs font-medium select-none">
-                    {studioConnected ? 'Waiting for Studio scan...' : 'No place loaded'}
-                  </span>
+                  {studioScanPending ? (
+                    <span className="flex items-center gap-2 text-primary/80 text-xs font-medium select-none">
+                      <Spinner size="sm" color="current" />
+                      Scanning...
+                    </span>
+                  ) : (
+                    <span className="text-text-muted/60 text-xs font-medium select-none">
+                      {studioConnected ? 'Waiting for Studio scan...' : 'No place loaded'}
+                    </span>
+                  )}
                 </div>
                 {/* Clickable drop zone */}
                 <div

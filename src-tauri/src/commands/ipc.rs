@@ -479,7 +479,7 @@ pub async fn run_spoofer_action(
 
     let mut asset_ids = Vec::new();
     let parts: Vec<&str> = assets_str
-        .split(|c: char| c.is_whitespace() || c == '[' || c == ']')
+        .split(|c: char| c.is_whitespace() || c == ',' || c == '[' || c == ']' || c == ';')
         .filter(|s| !s.is_empty())
         .collect();
     for p in parts {

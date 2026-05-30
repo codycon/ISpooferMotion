@@ -98,16 +98,47 @@ pub async fn play_roblox_audio(
     Ok(audio_path.to_string_lossy().into_owned())
 }
 
+/// Detect audio format from magic bytes instead of trusting Content-Type headers,
+/// which Roblox frequently returns incorrectly.
+fn detect_audio_extension(bytes: &[u8]) -> &'static str {
+    if bytes.starts_with(b"OggS") {
+        "ogg"
+    } else if bytes.len() >= 3
+        && (bytes.starts_with(b"\xff\xfb")
+            || bytes.starts_with(b"\xff\xf3")
+            || bytes.starts_with(b"\xff\xf2")
+            || bytes.starts_with(b"ID3"))
+    {
+        "mp3"
+    } else if bytes.len() >= 4
+        && (bytes[4..].starts_with(b"ftyp")
+            || bytes.starts_with(b"\x00\x00\x00"))
+    {
+        // M4A / MP4 container — browsers support these natively too
+        "mp4"
+    } else if bytes.starts_with(b"fLaC") {
+        "flac"
+    } else if bytes.starts_with(b"RIFF") && bytes.len() > 8 && &bytes[8..12] == b"WAVE" {
+        "wav"
+    } else {
+        "ogg" // safe fallback
+    }
+}
+
 async fn download_roblox_audio(
     audio_dir: &std::path::Path,
     asset_id: &str,
     cookie: Option<&str>,
 ) -> crate::error::Result<std::path::PathBuf> {
-    let client =
-        reqwest::Client::builder().redirect(reqwest::redirect::Policy::limited(10)).build()?;
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::limited(10))
+        .timeout(std::time::Duration::from_secs(30))
+        .build()?;
+
     let mut request = client
         .get(format!("https://assetdelivery.roblox.com/v1/asset/?id={}", asset_id))
-        .header(reqwest::header::USER_AGENT, "ISpooferMotion/2.0");
+        .header(reqwest::header::USER_AGENT, "Roblox/WinInet")
+        .header(reqwest::header::ACCEPT, "*/*");
 
     if let Some(cookie_value) = cookie {
         let cookie_header = build_roblox_cookie_header(cookie_value);
@@ -121,15 +152,15 @@ async fn download_roblox_audio(
         return Err(format!("Roblox audio download failed with HTTP {}.", response.status()).into());
     }
 
-    let extension = response
-        .headers()
-        .get(reqwest::header::CONTENT_TYPE)
-        .and_then(|value| value.to_str().ok())
-        .map(|content_type| if content_type.contains("mpeg") { "mp3" } else { "ogg" })
-        .unwrap_or("ogg");
-    let audio_path = audio_dir.join(format!("sound_{}.{}", asset_id, extension));
     let bytes = response.bytes().await?;
-    std::fs::write(&audio_path, bytes)?;
+    if bytes.is_empty() {
+        return Err("Roblox returned an empty audio file.".into());
+    }
+
+    // Use magic-byte detection — Content-Type from Roblox is frequently wrong
+    let extension = detect_audio_extension(&bytes);
+    let audio_path = audio_dir.join(format!("sound_{}.{}", asset_id, extension));
+    std::fs::write(&audio_path, &bytes)?;
     Ok(audio_path)
 }
 
