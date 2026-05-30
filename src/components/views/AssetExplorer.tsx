@@ -546,7 +546,7 @@ export default function AssetExplorer({ isOpen, setIsOpen }: AssetExplorerProps)
           scanTimeoutRef.current = setTimeout(() => {
             setStudioScanPending(false);
             pendingScanData.current = {};
-          }, 30000);
+          }, 300000); // 5 minutes
           return;
         }
 

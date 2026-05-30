@@ -156,33 +156,7 @@ local ASSET_TYPE_VIDEO = { [62] = true }
 local assetTypeCache = {}
 
 local function getAssetType(assetId)
-  if assetTypeCache[assetId] then
-    return assetTypeCache[assetId]
-  end
-  local ok, info = pcall(function()
-    return MarketplaceService:GetProductInfo(tonumber(assetId))
-  end)
-  if ok and info and info.AssetTypeId then
-    local typeId = info.AssetTypeId
-    local category = "unknown"
-    if ASSET_TYPE_ANIMATION[typeId] then
-      category = "animation"
-    elseif ASSET_TYPE_SOUND[typeId] then
-      category = "sound"
-    elseif ASSET_TYPE_IMAGE[typeId] then
-      category = "image"
-    elseif ASSET_TYPE_MESH[typeId] then
-      category = "mesh"
-    elseif ASSET_TYPE_VIDEO[typeId] then
-      category = "video"
-    end
-    assetTypeCache[assetId] = category
-    return category
-  else
-    warn("[AssetCollection] Could not resolve asset type for ID " .. tostring(assetId))
-    assetTypeCache[assetId] = "unknown"
-    return "unknown"
-  end
+  return "script_ref"
 end
 
 local LOOSE_ID_PATTERNS = {

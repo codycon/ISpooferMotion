@@ -571,33 +571,57 @@ export default function SpoofingView() {
       };
 
       const finalAssetIds = new Set<string>();
-
-      // Add checked items from Explorer
-      selectedAssetIds.forEach((id) => finalAssetIds.add(id));
-
-      // Add all items matching selected types from the Spoofer dropdown
       const selectedTypes = new Set(selectedSpoofTypes);
-      const gatherByType = (nodes: any[]) => {
-        for (const node of nodes) {
-          for (const asset of node.assets) {
-            if (selectedTypes.has(asset.type)) {
-              const id = getAssetId(asset);
-              if (id) finalAssetIds.add(id);
-            }
-          }
-          if (node.children) gatherByType(node.children);
-        }
-      };
-      if (rootInstances.length > 0) {
-        gatherByType(rootInstances);
-      }
 
-      //Add manual text input
-      if (config.advanced.forcePlaceIds) {
-        config.advanced.forcePlaceIds.split(',').forEach((id) => {
-          const trimmed = id.trim();
-          if (trimmed) finalAssetIds.add(trimmed);
-        });
+      if (rootInstances.length > 0) {
+        // We have an active scan tree. Only include assets that are:
+        // 1. Checked in the Asset Explorer (selectedAssetIds)
+        // 2. Matching the allowed types from the dropdown (selectedTypes)
+        const gatherByType = (nodes: any[]) => {
+          for (const node of nodes) {
+            for (const asset of node.assets) {
+              const id = getAssetId(asset);
+              if (id && selectedAssetIds.has(id) && selectedTypes.has(asset.type)) {
+                finalAssetIds.add(id);
+              }
+            }
+            if (node.children) gatherByType(node.children);
+          }
+        };
+        gatherByType(rootInstances);
+
+        // Also allow manual IDs typed into forcePlaceIds if they aren't part of the tree
+        // Note: because forcePlaceIds auto-syncs with selectedAssetIds, this might include
+        // everything. To prevent bypassing the type filter, we only add manual IDs if they 
+        // are NOT found in the tree at all.
+        const allTreeIds = new Set<string>();
+        const gatherAllIds = (nodes: any[]) => {
+          for (const node of nodes) {
+            for (const a of node.assets) {
+              const id = getAssetId(a);
+              if (id) allTreeIds.add(id);
+            }
+            if (node.children) gatherAllIds(node.children);
+          }
+        };
+        gatherAllIds(rootInstances);
+
+        if (config.advanced.forcePlaceIds) {
+          config.advanced.forcePlaceIds.split(',').forEach((id) => {
+            const trimmed = id.trim();
+            if (trimmed && !allTreeIds.has(trimmed)) {
+              finalAssetIds.add(trimmed);
+            }
+          });
+        }
+      } else {
+        // No scan tree available (e.g. manual use only). Just use forcePlaceIds.
+        if (config.advanced.forcePlaceIds) {
+          config.advanced.forcePlaceIds.split(',').forEach((id) => {
+            const trimmed = id.trim();
+            if (trimmed) finalAssetIds.add(trimmed);
+          });
+        }
       }
 
       await invoke('run_spoofer_action', {
