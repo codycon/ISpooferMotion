@@ -388,6 +388,12 @@ export default function SpoofingView() {
   const [isSpoofing, setIsSpoofing] = useState(false);
   const [spoofProgress, setSpoofProgress] = useState(0);
   const [logs, setLogs] = useState<string>('');
+  const logsEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll output to bottom whenever new log lines arrive
+  useEffect(() => {
+    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs]);
 
   useEffect(() => {
     const refreshUsers = () => setUsers(loadCachedUsers());
@@ -513,7 +519,8 @@ export default function SpoofingView() {
 
     try {
       unlistenProgress = await listen('spoofer-progress', (event: any) => {
-        setSpoofProgress(event.payload.progress);
+        const { current, total } = event.payload;
+        setSpoofProgress(total > 0 ? (current / total) * 100 : 0);
       });
 
       unlistenLog = await listen('spoofer-log', (event: any) => {
@@ -677,14 +684,36 @@ export default function SpoofingView() {
               className="tour-spoofer-execution"
             >
               <Group>
-                <FormTextarea
-                  label={t('spoof.output')}
-                  value={logs}
-                  onChange={() => {}}
-                  placeholder={t('spoof.outputPlaceholder')}
-                  className="font-mono text-xs opacity-80 h-32"
-                  disabled
-                />
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-text-secondary">Output</span>
+                  <div
+                    className="h-36 overflow-y-auto bg-bg-base border border-border-subtle rounded-[var(--radius-md)] p-2 font-mono text-[11px] text-text-secondary leading-relaxed"
+                  >
+                    {logs
+                      ? logs.split('\n').filter(Boolean).map((line, i) => {
+                          const level = line.startsWith('[ERROR]') ? 'error'
+                            : line.startsWith('[WARN]') ? 'warn'
+                            : line.startsWith('[SUCCESS]') ? 'success'
+                            : 'info';
+                          return (
+                            <div
+                              key={i}
+                              className={`mb-0.5 ${
+                                level === 'error' ? 'text-red-400'
+                                : level === 'warn' ? 'text-yellow-400'
+                                : level === 'success' ? 'text-green-400'
+                                : 'text-text-secondary'
+                              }`}
+                            >
+                              {line}
+                            </div>
+                          );
+                        })
+                      : <span className="text-text-muted/40">Output will appear here...</span>
+                    }
+                    <div ref={logsEndRef} />
+                  </div>
+                </div>
                 <FormToggle
                   label={t('settings.skipOwned')}
                   description={t('settings.skipOwnedDescription')}
