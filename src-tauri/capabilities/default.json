@@ -1,0 +1,27 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "enables the default permissions",
+  "windows": ["main", "splashscreen", "theme-editor"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-min-size",
+    "core:window:allow-set-size",
+    "core:window:allow-center",
+    "core:window:allow-show",
+    "core:window:allow-set-focus",
+    "core:window:allow-close",
+    "core:window:allow-hide",
+    "core:window:allow-minimize",
+    "core:window:allow-create",
+    "core:webview:allow-create-webview-window",
+    "dialog:default",
+    "shell:default",
+    "shell:allow-open",
+    "fs:default",
+    "fs:read-all",
+    "fs:write-all",
+    "fs:scope-appdata-recursive"
+  ]
+}

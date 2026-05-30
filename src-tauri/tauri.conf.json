@@ -1,0 +1,87 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "ISpooferMotion",
+  "version": "2.1.8",
+  "identifier": "com.github.IncrediDev.ISpooferMotion",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "ISpooferMotion",
+        "label": "main",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": false,
+        "transparent": true,
+        "center": true,
+        "visible": true
+      },
+      {
+        "title": "Updater",
+        "label": "splashscreen",
+        "url": "/splash.html",
+        "width": 320,
+        "height": 400,
+        "resizable": false,
+        "fullscreen": false,
+        "decorations": false,
+        "transparent": false,
+        "center": true,
+        "alwaysOnTop": true,
+        "visible": false
+      },
+      {
+        "title": "Theme Editor",
+        "label": "theme-editor",
+        "url": "/theme-editor.html",
+        "width": 760,
+        "height": 660,
+        "minWidth": 720,
+        "minHeight": 560,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false,
+        "center": true,
+        "visible": false
+      }
+    ],
+    "security": {
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "$HOME/**",
+          "$APPDATA/**",
+          "$RESOURCE/**",
+          "$PICTURE/**",
+          "$VIDEO/**",
+          "$DESKTOP/**",
+          "$DOWNLOAD/**",
+          "$DOCUMENT/**",
+          "C:/**",
+          "D:/**"
+        ]
+      },
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
