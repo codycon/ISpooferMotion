@@ -44,6 +44,20 @@ export default function StatusBar() {
     return () => clearInterval(interval);
   }, [config.general.autoUpdate]);
 
+  const [studioConnected, setStudioConnected] = useState(false);
+
+  useEffect(() => {
+    const port = config.advanced.pluginPort || '3100';
+    const check = () => {
+      fetch(`http://localhost:${port}/health`, { signal: AbortSignal.timeout(800) })
+        .then(() => setStudioConnected(true))
+        .catch(() => setStudioConnected(false));
+    };
+    check();
+    const id = setInterval(check, 5000);
+    return () => clearInterval(id);
+  }, [config.advanced.pluginPort]);
+
   useEffect(() => {
     invoke<string>('get_app_version')
       .then((v) => setAppVersion(v))
@@ -73,7 +87,9 @@ export default function StatusBar() {
       className="h-8 w-full bg-transparent border-t border-border-subtle flex items-center justify-between px-4 shrink-0 z-50 select-none"
     >
       <div className="flex items-center gap-2">
-        <StatusPill label="Ready" tone="primary" dot={false} />
+        <span className={`text-[11px] font-bold tracking-wide ${studioConnected ? 'text-primary' : 'text-text-muted/60'}`}>
+          {studioConnected ? 'Synced to Studio' : 'Not synced to Studio'}
+        </span>
       </div>
 
       <div className="flex items-center gap-3">

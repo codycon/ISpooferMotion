@@ -535,6 +535,25 @@ export default function SpoofingView() {
           logIsm('success', 'Spoofing completed successfully.', true);
           if (event.payload.replacements) {
             applyReplacements(event.payload.replacements);
+            
+            // Auto-replace in Studio
+            const port = config.advanced.pluginPort || '3100';
+            const mappings = Object.entries(event.payload.replacements).map(([oldId, newId]) => ({
+              originalId: oldId,
+              newId
+            }));
+
+            try {
+              await fetch(`http://localhost:${port}/replace-ids`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mappings }),
+                signal: AbortSignal.timeout(2000)
+              });
+              logIsm('success', 'Sent auto-replace instructions to Studio plugin.', true);
+            } catch (err) {
+              logIsm('warn', 'Failed to send replacements to Studio (is it connected?).', true);
+            }
           }
           setSpoofProgress(100);
         } else {
@@ -602,16 +621,12 @@ export default function SpoofingView() {
     }
   };
 
-  const handleRetryReplacing = async () => {
-    setIsSpoofing(true);
-    setLogs('Retrying push to Studio...\n');
+  const handleStopSpoofer = async () => {
     try {
-      await invoke('push_to_studio', { replacementsMap: null });
-      logIsm('success', 'Retry completed.', true);
+      await invoke('spoofer_cancel');
+      setLogs((prev) => prev + '[INFO] Cancelling spoofer...\n');
     } catch (err) {
-      logIsm('error', 'Retry failed: ' + err, true);
-    } finally {
-      setIsSpoofing(false);
+      logIsm('error', 'Failed to cancel spoofer: ' + err, true);
     }
   };
 
@@ -786,10 +801,10 @@ export default function SpoofingView() {
                   </Button>
                   <Button
                     variant="bordered"
-                    className="font-bold h-12 px-8 tracking-wide"
-                    disabled={isSpoofing}
-                    label={t('spoof.retryReplacing')}
-                    onClick={handleRetryReplacing}
+                    className="font-bold h-12 px-8 tracking-wide text-red-500 border-red-500/50 hover:bg-red-500/10"
+                    disabled={!isSpoofing}
+                    label="Stop"
+                    onClick={handleStopSpoofer}
                   />
                 </Row>
               </Group>

@@ -477,6 +477,18 @@ pub async fn run_spoofer_action(
     let download_only = data.download_only.unwrap_or(false);
     let _concurrent = data.concurrent.unwrap_or(false);
 
+    if cookie.trim().is_empty() {
+        emit_log(&app, "Invalid or missing Roblox cookie. Please check your settings.", "error");
+        let _ = app.emit("spoofer-result", serde_json::json!({"success": false, "output": "Invalid or missing Roblox cookie"}));
+        return Ok(());
+    }
+
+    if !download_only && api_key.trim().is_empty() {
+        emit_log(&app, "Invalid or missing API key. Please check your settings.", "error");
+        let _ = app.emit("spoofer-result", serde_json::json!({"success": false, "output": "Invalid or missing API key"}));
+        return Ok(());
+    }
+
     let mut asset_ids = Vec::new();
     let parts: Vec<&str> = assets_str
         .split(|c: char| c.is_whitespace() || c == ',' || c == '[' || c == ']' || c == ';')
