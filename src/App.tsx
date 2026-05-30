@@ -1,0 +1,142 @@
+import { convertFileSrc } from '@tauri-apps/api/core';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronLeft } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import OnboardingManager from './components/layout/OnboardingManager';
+import Sidebar from './components/layout/Sidebar';
+import StatusBar from './components/layout/StatusBar';
+import Titlebar from './components/layout/Titlebar';
+import CreditsModal from './components/modals/CreditsModal';
+import AssetExplorer from './components/views/AssetExplorer';
+import ConfigView from './components/views/ConfigView';
+import DebugConsole from './components/views/DebugConsole';
+import HomeView from './components/views/HomeView';
+import ReportBugView from './components/views/ReportBugView';
+import SettingsView from './components/views/SettingsView';
+import SpoofingView from './components/views/SpoofingView';
+import AnimationPreview from './components/AnimationPreview';
+import { useConfig } from './contexts/ConfigContext';
+import { useThemeAccent } from './contexts/ThemeContext';
+import { IsmProvider, ToastProvider } from './ism-library';
+
+export default function App() {
+  const [isCreditsOpen, setCreditsOpen] = useState(false);
+  const { customBackground } = useThemeAccent();
+  const { config, updateConfig } = useConfig();
+  const activeTab = config.ui.activeTab;
+  const isExplorerOpen = config.ui.assetExplorerOpen;
+  const setActiveTab = (tabId: string) => updateConfig('ui', 'activeTab', tabId);
+  const setIsExplorerOpen = (isOpen: boolean) => updateConfig('ui', 'assetExplorerOpen', isOpen);
+  const backgroundUrl = customBackground
+    ? customBackground.path.startsWith('http') || customBackground.path.startsWith('data:')
+      ? customBackground.path
+      : convertFileSrc(customBackground.path)
+    : null;
+
+  useEffect(() => {
+    const handleCredits = () => setCreditsOpen(true);
+    document.addEventListener('open-credits', handleCredits);
+
+    return () => {
+      document.removeEventListener('open-credits', handleCredits);
+    };
+  }, []);
+
+  return (
+    <IsmProvider config={{ autoScrollAccordions: config.ui.autoScrollSections }}>
+      <div
+        className="flex flex-col h-screen w-screen overflow-hidden text-foreground relative font-sans selection:bg-primary/30 antialiased"
+        style={{
+          backgroundColor:
+            'color-mix(in srgb, var(--bg-base) calc(var(--app-opacity, 1) * 100%), transparent)',
+        }}
+      >
+        {customBackground && backgroundUrl && (
+          <div className="absolute inset-0 w-full h-full z-0 pointer-events-none overflow-hidden">
+            {customBackground.type === 'video' ? (
+              <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover"
+                src={backgroundUrl}
+              />
+            ) : (
+              <img
+                className="absolute inset-0 w-full h-full object-cover"
+                src={backgroundUrl}
+                alt="Custom background"
+              />
+            )}
+            <div className="absolute inset-0 bg-background/50 backdrop-blur-[2px]" />
+          </div>
+        )}
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col h-full w-full relative z-10"
+        >
+          <Titlebar />
+
+          <div className="flex flex-1 overflow-hidden relative">
+            <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+
+            <div className="flex-1 relative overflow-hidden bg-transparent">
+              <AnimatePresence mode="wait" initial={false}>
+                {activeTab === 'home' && <HomeView key="home" />}
+                {activeTab === 'spoofing' && <SpoofingView key="spoofing" />}
+                {activeTab === 'settings' && <SettingsView key="settings" />}
+                {activeTab === 'report_bug' && <ReportBugView key="report_bug" />}
+                {activeTab === 'config' && <ConfigView key="config" />}
+              </AnimatePresence>
+
+              <DebugConsole
+                isOpen={config.debug?.debugMode || false}
+                onClose={() => updateConfig('debug', 'debugMode', false)}
+              />
+            </div>
+
+            <AssetExplorer isOpen={isExplorerOpen} setIsOpen={setIsExplorerOpen} />
+
+            {!isExplorerOpen && (
+              <motion.div
+                initial={{ x: 20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 20, opacity: 0 }}
+                transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                className="tour-explorer-toggle absolute right-0 top-1/2 -translate-y-1/2 z-[45] cursor-pointer flex items-center justify-end group"
+                onClick={() => setIsExplorerOpen(true)}
+              >
+                <motion.div
+                  whileHover={{ width: 28, backgroundColor: 'var(--bg-elevated)' }}
+                  className="w-6 h-28 bg-bg-elevated/60 backdrop-blur-xl border border-border-subtle border-r-0 rounded-l-2xl flex items-center justify-center shadow-floating transition-colors"
+                >
+                  <ChevronLeft
+                    size={16}
+                    strokeWidth={2.5}
+                    className="text-text-secondary group-hover:text-text-primary transition-colors"
+                  />
+                </motion.div>
+              </motion.div>
+            )}
+          </div>
+
+          <div
+            className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none z-[60] opacity-[0.03] mix-blend-screen"
+            style={{ background: 'linear-gradient(to top, var(--primary), transparent)' }}
+          />
+
+          <StatusBar />
+        </motion.div>
+
+
+        <CreditsModal isOpen={isCreditsOpen} onClose={() => setCreditsOpen(false)} />
+        <ToastProvider />
+        <OnboardingManager />
+      </div>
+    </IsmProvider>
+  );
+}

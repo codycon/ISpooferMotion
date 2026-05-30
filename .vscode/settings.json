@@ -1,0 +1,31 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "explorer.excludeGitIgnore": false,
+  "files.exclude": {
+    "node_modules": true,
+    ".npm-cache": true,
+    "temp": true,
+    "tmp": true,
+    "coverage": true,
+    ".cache": true,
+    "tests": true,
+    "dist": false,
+    ".vscode": true
+  },
+  "search.exclude": {
+    "dist": false
+  }
+}

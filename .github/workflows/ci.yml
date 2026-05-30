@@ -1,0 +1,100 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [temp/testing]
+    tags: ['v*']
+  pull_request:
+    branches: [temp/testing]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Release
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            os: windows
+          - platform: macos-latest
+            os: macos
+          - platform: ubuntu-22.04
+            os: linux
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux only)
+        if: matrix.os == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libssl-dev pkg-config
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install npm dependencies
+        run: npm install
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.os == 'macos' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Build Plugin
+        run: npm run build:plugin
+
+      - name: Build Tauri App
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name == 'temp/testing' && 'temp-testing-release' || (github.ref_type == 'tag' && github.ref_name || '') }}
+          releaseName: ${{ github.ref_name == 'temp/testing' && 'Test Build (temp/testing)' || format('ISpooferMotion {0}', github.ref_name) }}
+          releaseBody: 'See the assets below to download and install this version.'
+          releaseDraft: true
+          prerelease: ${{ github.ref_name == 'temp/testing' }}
+
+      - name: Upload Plugin to Release
+        if: (github.ref_type == 'tag' || github.ref_name == 'temp/testing') && matrix.os == 'windows'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist-plugin/ISpooferMotion.rbxmx
+          tag_name: ${{ github.ref_name == 'temp/testing' && 'temp-testing-release' || github.ref_name }}
+          draft: true
+          prerelease: ${{ github.ref_name == 'temp/testing' }}
+
+  discord:
+    name: Announce on Discord
+    needs: build-and-release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Announce Release
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -H "Content-Type: application/json" \
+                 -d '{"content": "🚀 **ISpooferMotion '${{ github.ref_name }}' is now available!**\n\nDownload the latest release here: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"}' \
+                 $DISCORD_WEBHOOK_URL
+          else
+            echo "Discord webhook URL not provided."
+          fi
