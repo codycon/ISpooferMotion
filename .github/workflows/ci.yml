@@ -69,7 +69,7 @@ jobs:
         run: npm run release:hardening-check
 
       - name: Build Windows app EXE
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != ''))
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
@@ -78,27 +78,28 @@ jobs:
         run: npm run build -- --win nsis --publish never
 
       - name: Build Roblox Studio plugin (Windows only)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != ''))
         run: npm run build:plugin
 
       - name: Build macOS app
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != ''))
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npm run build -- --mac --universal --publish never
 
       - name: Build Linux packages
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != ''))
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npm run build -- --linux --publish never
 
       - name: Cleanup unwanted artifacts (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != ''))
         shell: pwsh
         run: Remove-Item dist/*__uninstaller.exe, dist/*.blockmap -ErrorAction SilentlyContinue
 
       - name: Upload artifacts
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != '')
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
