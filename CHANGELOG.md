@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.3.13-hotfix.3
+
+- Windows builds are now code-signed using Azure Trusted Signing. Installers display a verified publisher (`ispoofermotion.com`) instead of an "Unknown publisher" warning, and Microsoft Defender SmartScreen reputation will build up over time across all signed downloads.
+- Added a custom electron-builder signer (`scripts/azure-sign.js`) that authenticates to Azure with a service principal and signs the installer with SHA-256 + RFC 3161 timestamping.
+- CI/CD now installs the Microsoft Trusted Signing client on the Windows runner and passes the required signing secrets through to the build step.
+
 ## v1.3.13-hotfix.2
 
 - Sound spoofing is more reliable when using the Studio plugin. Scans now carry over the open game's Place ID automatically instead of making you enter it again.
