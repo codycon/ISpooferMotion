@@ -448,8 +448,6 @@ local function collectIdsFromSource(source, kind, ids)
 
   collectContextualAssetUrls(source, kind, ids)
   collectLooseContextIds(source, kind, ids)
-  -- Roblox metadata validation filters these broad static candidates by asset type.
-  addId(ids, source)
 end
 
 local function traverseValidDescendants(callback, progressCallback)
@@ -941,7 +939,7 @@ local function collectIdsFromObject(obj, kind, ids)
     local ok, value = pcall(function()
       return obj.Value
     end)
-    if ok then
+    if ok and hasObjectContext then
       addId(ids, value)
     end
   end
@@ -950,8 +948,10 @@ local function collectIdsFromObject(obj, kind, ids)
     return obj:GetAttributes()
   end)
   if okAttributes and attributes then
-    for _, attributeValue in pairs(attributes) do
-      addId(ids, attributeValue)
+    for attrName, attributeValue in pairs(attributes) do
+      if hasObjectContext or contextLooksLikeKind(attrName, kind) then
+        addId(ids, attributeValue)
+      end
     end
   end
 
@@ -960,7 +960,9 @@ local function collectIdsFromObject(obj, kind, ids)
   end)
   if okTags and tags then
     for _, tag in ipairs(tags) do
-      addId(ids, tag)
+      if hasObjectContext or contextLooksLikeKind(tag, kind) then
+        addId(ids, tag)
+      end
     end
   end
 end
