@@ -1331,7 +1331,7 @@ async function handleSpooferAction(data, getMainWindowFn, sendTransferUpdate, se
   let hasAuthError = false;
 
   // Get the maxPlaceIds and maxPlaceIdRetries from data, defaults to 10 and 3
-  const maxPlaceIds = data.maxPlaceIds || 10;
+  const maxPlaceIds = data.maxPlaceIds || 10000;
   const maxPlaceIdRetries = data.maxPlaceIdRetries || 3;
   const overridePlaceId = data.overridePlaceId ? parseInt(data.overridePlaceId) : null;
 
