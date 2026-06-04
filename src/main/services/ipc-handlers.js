@@ -13,6 +13,7 @@ const { loadJobs, saveJobRecord, deleteJobRecord } = require('./jobs');
 const { saveSession, loadSession, clearSession } = require('./session');
 const { pauseSpoofer, resumeSpoofer, cancelSpoofer, resetRunControls, checkCancelled, checkPaused, getAbortSignal } = require('./ProcessManager');
 const { pushReplacement } = require('./localhost-plugin-server');
+const { buildFinalUploadName } = require('./replacement-utils');
 
 // --- Global batch rate limiting for assetdelivery ---
 let batchRateLimitUntil = 0;
@@ -155,23 +156,39 @@ function spawnDetached(filePath, args = []) {
   });
 }
 
-function buildFinalUploadName(entry, data) {
-  let finalName = entry.name;
-
-  if (data.renameFind) {
-    finalName = finalName.split(data.renameFind).join(data.renameReplace || '');
-  }
-
-  if (data.renamePrefix) {
-    finalName = data.renamePrefix + finalName;
-  }
-
-  if (data.renameSuffix) {
-    finalName = finalName + data.renameSuffix;
-  }
-
-  return finalName;
-}
+const runWithConcurrency = async (items, limit, worker) => {
+  const results = new Array(items.length);
+  let index = 0;
+  let cancelled = false;
+  const workers = Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, async () => {
+    while (true) {
+      if (cancelled) break;
+      try {
+        checkCancelled();
+        await checkPaused();
+      } catch (err) {
+        if (err.message === 'Operation cancelled by user' || err.message === 'Operation cancelled') {
+          cancelled = true;
+          break;
+        }
+        throw err;
+      }
+      const current = index++;
+      if (current >= items.length) break;
+      try {
+        results[current] = await worker(items[current]);
+      } catch (err) {
+        if (err.message === 'Operation cancelled by user' || err.message === 'Operation cancelled') {
+          cancelled = true;
+          break;
+        }
+        throw err;
+      }
+    }
+  });
+  await Promise.all(workers);
+  return results.filter(r => r !== undefined);
+};
 
 function extractBatchLocationError(loc) {
   if (!loc) return 'No location in batch response';
@@ -475,12 +492,11 @@ async function getRobloxProfile(context) {
     cookie = await getCookieFromAutoDetect();
   }
   if (!cookie) return null;
-  cookie = cookie.replace('.ROBLOSECURITY=', '').trim();
   const groupId = context.groupId ? String(context.groupId).trim() : null;
 
   try {
     const userResp = await fetchJson('https://users.roblox.com/v1/users/authenticated', {
-      headers: { Cookie: `.ROBLOSECURITY=${cookie}` },
+      headers: { Cookie: buildRobloxCookieHeader(cookie) },
     });
     if (!userResp || !userResp.id) return null;
     const userId = userResp.id;
@@ -1462,7 +1478,7 @@ async function handleSpooferAction(data, getMainWindowFn, sendTransferUpdate, se
               headers: {
                 'User-Agent': 'RobloxStudio/WinInet',
                 'Content-Type': 'application/json',
-                Cookie: `.ROBLOSECURITY=${robloxCookie}`,
+                Cookie: buildRobloxCookieHeader(robloxCookie),
                 'Roblox-Place-Id': String(placeId),
               },
               body: JSON.stringify(itemsWithoutCreator),
@@ -2052,40 +2068,6 @@ async function handleSpooferAction(data, getMainWindowFn, sendTransferUpdate, se
     if (DEVELOPER_MODE) console.log('(Dev) Download-only mode: keeping files in', downloadsDir);
   }
 }
-
-const runWithConcurrency = async (items, limit, worker) => {
-  const results = new Array(items.length);
-  let index = 0;
-  let cancelled = false;
-  const workers = Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, async () => {
-    while (true) {
-      if (cancelled) break;
-      try {
-        checkCancelled();
-        await checkPaused();
-      } catch (err) {
-        if (err.message === 'Operation cancelled by user' || err.message === 'Operation cancelled') {
-          cancelled = true;
-          break;
-        }
-        throw err;
-      }
-      const current = index++;
-      if (current >= items.length) break;
-      try {
-        results[current] = await worker(items[current]);
-      } catch (err) {
-        if (err.message === 'Operation cancelled by user' || err.message === 'Operation cancelled') {
-          cancelled = true;
-          break;
-        }
-        throw err;
-      }
-    }
-  });
-  await Promise.all(workers);
-  return results.filter(r => r !== undefined);
-};
 
 module.exports = {
   registerIpcHandlers,

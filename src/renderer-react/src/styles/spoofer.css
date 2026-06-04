@@ -13,7 +13,7 @@
 .bento-grid {
   display: grid;
   grid-template-columns: 1fr 380px;
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: min-content 1fr;
   gap: 16px;
   flex: 1;
 }

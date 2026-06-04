@@ -839,7 +839,7 @@ export default function SpooferView({ isActive }) {
                 disabled={!outputData || running}
                 onClick={async () => {
                   if (!outputData) {
-                    setStatusText('No output to push — run a spoof first.');
+                    setStatusText('No output to push - run a spoof first.');
                     return;
                   }
                   setStatusText('Pushing to Studio...');
@@ -847,7 +847,7 @@ export default function SpooferView({ isActive }) {
                     const result = await window.electronAPI?.pushToStudio?.(outputData);
                     if (result?.ok) {
                       setStatusText(
-                        `Pushed ${result.count} replacement${result.count === 1 ? '' : 's'} to Studio — plugin will auto-replace shortly.`,
+                        `Pushed ${result.count} replacement${result.count === 1 ? '' : 's'} to Studio - plugin will auto-replace shortly.`,
                       );
                     } else {
                       setStatusText(`Push failed: ${result?.error || 'Unknown error'}`);

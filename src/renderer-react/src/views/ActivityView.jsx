@@ -268,7 +268,7 @@ function JobCard({ job, redoJob, deleteJob, retryFailed }) {
         </span>
       </div>
 
-      {/* Collapsed summary — always visible even when not expanded */}
+      {/* Collapsed summary - always visible even when not expanded */}
       <div className="job-details">
         <span className="job-progress-text">{statusText}</span>
         {collapsedInfo && (
