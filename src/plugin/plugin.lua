@@ -1,5 +1,4 @@
 local HttpService = game:GetService("HttpService")
-local MarketplaceService = game:GetService("MarketplaceService")
 local CollectionService = game:GetService("CollectionService")
 
 local PLUGIN_VERSION = "__ISPOOFERMOTION_VERSION__"
@@ -46,11 +45,6 @@ local HUMANOID_DESCRIPTION_ANIMATION_PROPERTIES = {
 	"RunAnimation",
 	"SwimAnimation",
 	"WalkAnimation",
-}
-
-local ASSET_TYPE_BY_KIND = {
-	animation = { [24] = true, [61] = true },
-	sound = { [3] = true },
 }
 
 local IGNORED_ROOTS = {
@@ -437,7 +431,7 @@ local function collectIdsFromSource(source, ids, defaultObjName, checkYield)
 	local finds = 0
 
 	while init <= len do
-		local s, e, id = source:find("(%d%d%d%d%d%d+)", init)
+		local s, e, id = source:find("(%d%d%d%d%d%d%d+)", init)
 		if not s then
 			break
 		end

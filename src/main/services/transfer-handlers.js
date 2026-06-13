@@ -611,7 +611,6 @@ async function publishAnimationRbxmWithProgress(
       options.abortSignal,
     );
 
-    // Fast path: Roblox processed the upload synchronously.
     if (responseData?.done && responseData.response) {
       const assetId = getAssetIdFromResponse(responseData);
       if (assetId) {
@@ -625,7 +624,6 @@ async function publishAnimationRbxmWithProgress(
       }
     }
 
-    // Slow path: Roblox is processing async - poll until done.
     if (responseData?.path && !responseData.done) {
       const assetId = await pollUploadOperation(
         responseData,

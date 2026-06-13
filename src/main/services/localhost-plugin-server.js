@@ -217,7 +217,6 @@ function showScanNotification(kind, count) {
   }
 }
 
-// Metadata resolution
 
 const METADATA_CONCURRENCY = 30;
 const ECONOMY_DETAIL_BASE = 'https://economy.roblox.com/v2/assets';
@@ -602,7 +601,6 @@ function startLocalhostPluginServer(callbacks, options = {}) {
         return;
       }
 
-      // Plugin → Server: poll for a pending replacement batch.
       if (req.method === 'GET' && url.pathname === '/pending-replacement') {
         if (pendingReplacement) {
           sendJson(res, 200, {

@@ -692,7 +692,6 @@ async function getRobloxProfile(context) {
           iconUrl: gAvatarResp?.data?.[0]?.imageUrl || '',
         };
       } catch {
-        // Ignored
       }
     }
 
@@ -749,8 +748,6 @@ async function detectOpenCloudApiKeyOwner(apiKey) {
   }
 
   try {
-    // Build a minimal valid-shaped FormData request that will be rejected for
-    // a creator mismatch (the key's owner can never be user 0).
     const dummyBuffer = Buffer.from([0]);
     const formData = new FormData();
     formData.append(
@@ -876,7 +873,6 @@ function normalizeSpooferInputLine(line) {
       .replace(/^\uFEFF/, '')
       .replace(/[\u200B-\u200D\u2060]/g, '')
       .replace(/\u00A0/g, ' ')
-      // eslint-disable-next-line no-control-regex
       .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
       .trim()
   );
@@ -1500,7 +1496,6 @@ async function handleSpooferAction(
     ? String(data.overridePlaceId).replace(/\D/g, '')
     : '';
 
-  // Validate group ID is numeric if provided
   if (data.groupId && !/^\d+$/.test(String(data.groupId).trim())) {
     sendSpooferResultToRenderer({
       output: `Invalid Group ID "${data.groupId}" - must be a number only, not a URL or text.`,
@@ -1509,7 +1504,6 @@ async function handleSpooferAction(
     return;
   }
 
-  // Both animation and sound uploads require an Open Cloud API key
   if (!data.downloadOnly && !data.apiKey) {
     sendSpooferResultToRenderer({
       output:
@@ -1576,10 +1570,8 @@ async function handleSpooferAction(
     );
   }
 
-  // For backwards compatibility with code that expects animationEntries
   const animationEntries = assetEntries;
 
-  // Get cookie
   const firstEntry = animationEntries[0];
   let robloxCookie = data.robloxCookie;
   if (data.autoDetectCookie) {
@@ -1609,7 +1601,6 @@ async function handleSpooferAction(
 
   const robloxSession = createRobloxSession(robloxCookie);
 
-  // Ensure downloads directory exists
   try {
     if (!(await fs.stat(downloadsDir).catch(() => null))) {
       await fs.mkdir(downloadsDir, { recursive: true });
@@ -1639,11 +1630,9 @@ async function handleSpooferAction(
     }
   }
 
-  // Session setup (crash recovery + resume)
   const isResume = data.resumeSession === true;
   let session = isResume ? await loadSession() : null;
   if (isResume && session) {
-    // Filter to only assets not yet completed in the prior session
     const completedIds = new Set((session.completedMappings || []).map((m) => m.originalId));
     animationEntries.splice(
       0,
@@ -1652,7 +1641,6 @@ async function handleSpooferAction(
     );
 
     if (animationEntries.length === 0) {
-      // All assets were already completed - just show the saved mappings and finish
       const mappingOutput = (session.completedMappings || [])
         .map((m) => `${m.originalId} = ${m.newId},`)
         .join('\n');
@@ -2094,7 +2082,6 @@ async function handleSpooferAction(
       }
       sendStatusMessage(`Batch request failed: ${error.message}`);
       for (const item of items) {
-        // Only overwrite if we don't already have a valid location or a specific Roblox error for it
         if (
           !locationsMap[item.requestId] ||
           locationsMap[item.requestId].errors?.[0]?.message === 'Asset missing from batch response'
@@ -2373,10 +2360,6 @@ async function handleSpooferAction(
     downloadOne,
   );
 
-  // Resolve the upload creator user ID once before the upload loop.
-  // Open Cloud requires the creator to match the API key's owner, so we
-  // detect the API key owner first and only fall back to the cookie user
-  // ID if detection fails (e.g. older keys, network issues).
   let authenticatedUserId = null;
   if (!data.downloadOnly && data.apiKey && !data.groupId) {
     try {
@@ -2386,7 +2369,6 @@ async function handleSpooferAction(
         if (DEVELOPER_MODE)
           console.log(`(Dev) Resolved upload user ID from API key: ${authenticatedUserId}`);
       } else {
-        // Fall back to cookie-derived user ID.
         authenticatedUserId = await getAuthenticatedUserId(robloxCookie);
         if (DEVELOPER_MODE)
           console.log(
@@ -2403,7 +2385,6 @@ async function handleSpooferAction(
     }
   }
 
-  // Parallel uploads (skip if download-only mode)
   let uploadResults = [];
   if (data.downloadOnly) {
     sendStatusMessage('Download-only mode: Skipping uploads');
@@ -2415,8 +2396,6 @@ async function handleSpooferAction(
 
     let uploadCompleted = 0;
     const uploadStartTime = Date.now();
-    // Open Cloud API rate limit is 60 req/min.
-    // Normal uploads can run in parallel
     const defaultLimit = 15;
 
     let userLimit = data.maxConcurrentUploads
@@ -2429,8 +2408,6 @@ async function handleSpooferAction(
 
     const UPLOAD_CONCURRENCY = Math.max(1, Math.min(userLimit, successfulDownloads.length || 1));
 
-    // Worker pool: as soon as a slot finishes it picks up the next item immediately,
-    // instead of waiting for a whole batch to finish before starting the next.
     const uploadOne = async (downloadResult) => {
       const entry = downloadResult.entry;
       const filePath = downloadResult.filePath;
@@ -2495,7 +2472,6 @@ async function handleSpooferAction(
           UPLOAD_RETRY_DELAY_MS,
           onRetryAttempt,
         );
-        // Save progress after each successful upload
         if (uploadResult.success && uploadResult.assetId) {
           session.completedMappings.push({
             originalId: String(entry.id),
@@ -2554,14 +2530,12 @@ async function handleSpooferAction(
     uploadResults = await runWithConcurrency(successfulDownloads, UPLOAD_CONCURRENCY, uploadOne);
   }
 
-  // Process results
   for (const downloadResult of downloadResults) {
     const entry = downloadResult.entry;
     verboseOutputMessage += `\n--- Asset: ${entry.name} (ID: ${entry.id}) ---\n`;
     if (downloadResult.success) {
       downloadedSuccessfullyCount++;
 
-      // Only process upload results if not in download-only mode
       if (!data.downloadOnly) {
         const uploadResult = uploadResults.find((u) => u.entry.id === entry.id);
         if (uploadResult) {
@@ -2611,7 +2585,6 @@ async function handleSpooferAction(
     if (DEVELOPER_MODE) console.warn('(Dev) Failed to send final status message', e);
   }
 
-  // Build concise run summary (counts, failures)
   const downloadFailures = downloadResults
     .filter((r) => !r.success)
     .map((r) => ({
@@ -2629,7 +2602,6 @@ async function handleSpooferAction(
           reason: u.error || 'Unknown error',
         }));
 
-  // Detect rate-limit failures
   const rateLimitFailures = uploadFailures.filter(
     (f) => (f.reason || '').includes('429') || (f.reason || '').includes('Rate limit'),
   );
@@ -2667,7 +2639,6 @@ async function handleSpooferAction(
     runSummary += `\nInput lines skipped: ${skippedCount}\n${parseNotes.join('\n')}${skippedCount > parseNotes.length ? `\n(+${skippedCount - parseNotes.length} more)` : ''}\n`;
   }
 
-  // Add top failure details (bounded) for quick inspection
   if (downloadFailures.length) {
     runSummary += `\n` + listFailures('Download failures', downloadFailures);
   }
@@ -2675,7 +2646,6 @@ async function handleSpooferAction(
     runSummary += `\n` + listFailures('Upload failures', uploadFailures);
   }
 
-  // Add rate-limit guidance if detected
   if (rateLimitFailures.length > 0) {
     const suggestedDelay = Math.min(Math.max(UPLOAD_RETRY_DELAY_MS * 2, 10000), 60000);
     runSummary += `\nRATE LIMIT DETECTED (429): ${rateLimitFailures.length} upload(s) hit rate limits.\n`;
@@ -2717,7 +2687,6 @@ async function handleSpooferAction(
     }
   }
 
-  // Print final summary to console for quick inspection
   try {
     if (DEVELOPER_MODE) {
       console.log('(Dev) Run Summary:\n' + runSummary);
