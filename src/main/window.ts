@@ -16,7 +16,7 @@ const WINDOW_OPTIONS = Object.freeze({
 });
 
 function resolveAssetPath(fileName) {
-  const assetPath = path.join(__dirname, '..', 'assets', fileName);
+  const assetPath = path.join(__dirname, '..', 'src', 'assets', fileName);
   return app.isPackaged ? assetPath.replace('app.asar', 'app.asar.unpacked') : assetPath;
 }
 
@@ -27,11 +27,11 @@ function getIconPath() {
 }
 
 function getPreloadPath() {
-  return path.join(__dirname, '..', 'preload', 'preload.js');
+  return path.join(__dirname, '..', 'src', 'preload', 'preload.js');
 }
 
 function getRendererPath() {
-  return path.join(__dirname, '..', 'renderer-react', 'dist', 'index.html');
+  return path.join(__dirname, '..', 'src', 'renderer-react', 'dist', 'index.html');
 }
 
 function createWindow() {

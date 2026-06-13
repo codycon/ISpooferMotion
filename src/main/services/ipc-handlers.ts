@@ -141,7 +141,7 @@ function showDesktopNotification(title, body) {
   try {
     if (!Notification.isSupported()) return false;
     const iconName = process.platform === 'win32' ? 'app_icon.ico' : 'app_icon.png';
-    const rawIconPath = path.join(__dirname, '..', '..', 'assets', iconName);
+    const rawIconPath = path.join(__dirname, '..', 'src', 'assets', iconName);
     const iconPath = app.isPackaged
       ? rawIconPath.replace('app.asar', 'app.asar.unpacked')
       : rawIconPath;
@@ -732,7 +732,7 @@ function parsePlaceLookupInput(input, explicitType) {
     throw new Error('Enter a numeric User ID, Group ID, Place ID, or Roblox game URL.');
   }
   if (!creatorType) {
-    throw new Error('Choose whether the ID belongs to a user, group, or place.');
+    creatorType = 'place';
   }
   if (creatorType === 'user' && id === '1') {
     throw new Error('User ID 1 is ignored by design.');

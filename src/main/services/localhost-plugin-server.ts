@@ -34,7 +34,7 @@ function pushReplacement(text) {
 
 function resolveIconPath() {
   const assetFile = process.platform === 'win32' ? 'app_icon.ico' : 'app_icon.png';
-  const assetPath = path.join(__dirname, '..', '..', 'assets', assetFile);
+  const assetPath = path.join(__dirname, '..', 'src', 'assets', assetFile);
   return app.isPackaged ? assetPath.replace('app.asar', 'app.asar.unpacked') : assetPath;
 }
 
@@ -476,7 +476,7 @@ async function handleScanPayload(payload, callbacks) {
       receivedAt: new Date().toISOString(),
     };
 
-    const delivered = count > 0 ? callbacks.sendScanResults(scanResult) : false;
+    if (count > 0) callbacks.sendScanResults(scanResult);
     const statusMessage =
       count > 0
         ? `${scanLabel(kind)} scan imported: ${count} ID${count === 1 ? '' : 's'}.`
@@ -619,7 +619,7 @@ function startLocalhostPluginServer(callbacks, options = {}) {
       if (req.method === 'POST' && url.pathname === '/mark-replacement-applied') {
         pendingReplacement = null;
         if (typeof safeCallbacks.sendStatusMessage === 'function') {
-          safeCallbacks.sendStatusMessage('Studio plugin applied the replacements ✓');
+          safeCallbacks.sendStatusMessage('Studio plugin applied the replacements');
         }
         sendJson(res, 200, { ok: true });
         return;

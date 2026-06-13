@@ -2,7 +2,9 @@
 
 ## v1.3.17
 
-**Desktop Backend Migration**: Before this Update, the Studio Plugin did all the heavy lifting, checking each ID against the Roblox API one by one, which caused scans to be slow and prone to timing out. Now, the plugin acts as a vacuum ripping every potential ID out of your game and offloading the entire payload to the Desktop App.
+- **Full React UI Migration**: Completely rebuilt the application's user interface from the ground up using React, Chakra UI, and Vite.
+- **Desktop Backend Migration**: Greatly accelerated Roblox Studio scans. The Studio Plugin now acts as a high-speed vacuum, ripping every potential ID out of your game in bulk and offloading the heavy lifting of API validation to the Desktop App, preventing timeouts.
+- **Upload Speed Boost**: Cranked up the concurrency limits and batch chunk sizes under the hood. Mass-uploading and downloading assets is now significantly faster and more aggressive out of the box.
 
 ## v1.3.16
 
