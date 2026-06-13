@@ -661,7 +661,7 @@ end
 local function replaceIdsInText(text, replacements, ordered)
 	local total = 0
 	local nextText = tostring(text or "")
-	nextText = nextText:gsub("(%d%d%d%d%d+)", function(id)
+	nextText = nextText:gsub("(%d%d%d%d%d%d%d+)", function(id)
 		local replacement = replacements[id]
 		if replacement then
 			total += 1
@@ -871,23 +871,32 @@ local function replaceIdsInObject(obj, replacements, ordered, stats)
 		replaceValueObject(obj, replacements, ordered, stats)
 	end
 
+	if obj:IsA("Animation") then
+		replacePropertyText(obj, "AnimationId", replacements, ordered, stats)
+	elseif obj:IsA("Sound") then
+		replacePropertyText(obj, "SoundId", replacements, ordered, stats)
+		replacePropertyText(obj, "AudioContent", replacements, ordered, stats)
+	elseif obj:IsA("AudioPlayer") then
+		replacePropertyText(obj, "Asset", replacements, ordered, stats)
+		replacePropertyText(obj, "AssetId", replacements, ordered, stats)
+		replacePropertyText(obj, "AudioContent", replacements, ordered, stats)
+	elseif obj:IsA("LuaSourceContainer") then
+		replacePropertyText(obj, "Source", replacements, ordered, stats)
+	end
+
 	local props = getWritableProperties(obj.ClassName)
-	if #props > 0 then
-		for _, propName in ipairs(props) do
-			if propName ~= "Value" then
-				replacePropertyText(obj, propName, replacements, ordered, stats)
-			end
-		end
-	else
-		if obj:IsA("Animation") then
-			replacePropertyText(obj, "AnimationId", replacements, ordered, stats)
-		elseif obj:IsA("Sound") then
-			replacePropertyText(obj, "SoundId", replacements, ordered, stats)
-		elseif obj:IsA("AudioPlayer") then
-			replacePropertyText(obj, "Asset", replacements, ordered, stats)
-			replacePropertyText(obj, "AssetId", replacements, ordered, stats)
-		elseif obj:IsA("LuaSourceContainer") then
-			replacePropertyText(obj, "Source", replacements, ordered, stats)
+	local alreadyHandled = {
+		AnimationId = true,
+		SoundId = true,
+		AudioContent = true,
+		Asset = true,
+		AssetId = true,
+		Source = true,
+		Value = true,
+	}
+	for _, propName in ipairs(props) do
+		if not alreadyHandled[propName] then
+			replacePropertyText(obj, propName, replacements, ordered, stats)
 		end
 	end
 
